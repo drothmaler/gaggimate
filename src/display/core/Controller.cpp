@@ -742,7 +742,13 @@ void Controller::onVolumetricDelete() {
 
 void Controller::handleBrewButton(int brewButtonStatus) {
     printf("current screen %d, brew button %d\n", getMode(), brewButtonStatus);
+
+    if (settings.isMomentaryButtons()) {
+        brewButtonStatus = !brewButtonStatus; // Invert status for momentary buttons, as they activate on release
+    }
+
     if (brewButtonStatus) {
+        //  Switch On / Momentary button released
         switch (getMode()) {
         case MODE_STANDBY:
             deactivateStandby();
@@ -751,7 +757,11 @@ void Controller::handleBrewButton(int brewButtonStatus) {
             if (!isActive()) {
                 deactivateStandby();
                 clear();
-                activate();
+                if (settings.isMomentaryButtons() && brewPressedAt > 0 && millis() - brewPressedAt >= LONG_PRESS_FLUSH_MS) {
+                    onFlush();
+                } else {
+                    activate();
+                }
             } else if (settings.isMomentaryButtons()) {
                 deactivate();
                 clear();
@@ -766,7 +776,9 @@ void Controller::handleBrewButton(int brewButtonStatus) {
         default:
             break;
         }
+        brewPressedAt = 0;
     } else if (!settings.isMomentaryButtons()) {
+        // Switch off
         if (getMode() == MODE_BREW) {
             if (isActive()) {
                 deactivate();
@@ -777,8 +789,12 @@ void Controller::handleBrewButton(int brewButtonStatus) {
         } else if (getMode() == MODE_WATER) {
             deactivate();
         }
+    } else {
+        // Momentary pressed
+        brewPressedAt = millis();
     }
 }
+
 
 void Controller::handleSteamButton(int steamButtonStatus) {
     printf("current screen %d, steam button %d\n", getMode(), steamButtonStatus);

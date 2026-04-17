@@ -174,6 +174,10 @@ class Controller {
     static const unsigned long BLUETOOTH_GRACE_PERIOD_MS = 1500; // 1.5 second grace period
     static const unsigned long CONTROLLER_WAITING_TIMEOUT_MS = 10000;
 
+    // Momentary brew button long-press -> flush
+    unsigned long brewPressedAt = 0;
+    static const unsigned long LONG_PRESS_FLUSH_MS = 1000;
+
     xTaskHandle taskHandle;
 
     static void loopTask(void *arg);
