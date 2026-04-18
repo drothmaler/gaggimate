@@ -79,6 +79,9 @@ stateDiagram-v2
     Brew  --> Water : WebUI req:change-mode
     Brew  --> Steam : WebUI req:change-mode
 
+    %% --- Flush stays within BREW (no mode change) ---
+    Brew --> Brew : onFlush → BrewProcess(FLUSH_PROFILE)\n(long-press brew btn / WebUI req:flush:start)\nController.cpp:728
+
     note right of Standby
       Entering Standby always calls deactivate()
       and clears the heater setpoint.
@@ -89,6 +92,10 @@ stateDiagram-v2
       deactivateStandby() = deactivate() + setMode(BREW).
       BREW is the default "operating" mode that the UI
       falls back to (onMenuClick, steam release, ...).
+
+      Flush is NOT a separate mode: onFlush() starts a
+      BrewProcess using FLUSH_PROFILE, so to the state
+      machine it is indistinguishable from a normal shot.
     end note
 ```
 
@@ -134,6 +141,9 @@ Grind --> Brew  : onBrewScreen / onMenuClick
 Grind --> Steam : onSteamScreen
 Grind --> Water : onWaterScreen
 
+' Flush stays within BREW (no mode change)
+Brew --> Brew : onFlush (FLUSH_PROFILE BrewProcess)
+
 ' Back to Standby
 Brew  --> Standby : standby timeout / OTA / error\nBLE disconnect / autotune / HomeKit OFF
 Steam --> Standby : (same triggers)
@@ -177,3 +187,10 @@ All mode transitions found via `setMode` / `activateStandby` / `deactivateStandb
 | HomeKit accessory ON                       | `HomekitPlugin.cpp:96`                       | BREW         |
 | HomeKit accessory OFF                      | `HomekitPlugin.cpp:98`                       | STANDBY      |
 | WebUI `req:change-mode`                    | `WebUIPlugin.cpp:329`                        | any          |
+| UI: long-press brew button → `onFlush`     | `ui_BrewScreen.c:73`, `ui_events.cpp:104`    | BREW (self)  |
+| WebUI `req:flush:start` → `onFlush`        | `WebUIPlugin.cpp:789`                        | BREW (self)  |
+
+> **Note on Flush.** `Controller::onFlush()` (`Controller.cpp:728`) does **not**
+> call `setMode`; it starts a `BrewProcess` with the built-in `FLUSH_PROFILE`
+> (`src/display/core/static_profiles.h:6`). `BrewProcess::getType()` returns
+> `MODE_BREW`, so flush is a sub-behavior of BREW rather than a distinct state.
